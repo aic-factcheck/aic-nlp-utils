@@ -81,7 +81,7 @@ def process_to_lines(data: Sequence,
                      cont: bool=True, 
                      mkdir: bool=True, 
                      show_progress: bool=True) -> None:
-    """Processes sequential `data` items `x` with `pfunc(func(x))`and stores each result as a file in `fname` file.
+    """Processes sequential `data` items `e` with `pfunc(func(e))`and stores each result as a file in `fname` file.
 
     Args:
         data (Sequence): Source sequential data.
@@ -89,7 +89,7 @@ def process_to_lines(data: Sequence,
         fname (Union[str, Path]): Output file name.
         bufsize (int, optional): The file is continually written after `bufsize line are created`. Defaults to 1.
         total (Optional[int], optional): Hint to number of `data` elements. If `len(data)` exists it is inferred automatically. Defaults to None.
-        pfunc (Callable): Function applied post `func` aimed at getting formatted string. Defaults to `lambda e:e`.
+        pfunc (Callable): Function applied post `func` aimed at getting formatted string. Defaults to `lambda e: e`.
         cont (bool, optional): Continue partially finished processing? Defaults to True.
         mkdir (bool, optional): Create `fname` parent directory? Defaults to True.
         show_progress (bool, optional): Show `tqdm` progress bars. Defaults to True.
