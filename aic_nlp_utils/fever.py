@@ -22,11 +22,17 @@ def fever_detokenize(txt: str) -> str:
     return txt
 
 
-def import_fever_corpus_from_sqlite(corpus_db_file: Union[str, Path]) -> List[Dict]:
+def import_fever_corpus_from_sqlite(corpus_db_file: Union[str, Path], 
+                                    table: str="documents", 
+                                    idcol: str="id",
+                                    textcol: str="text") -> List[Dict]:
     """Reads FEVER corpus from Sqlite3 used by original EnFEVER code. Both page id and the text is NFC encoded unicode.
 
     Args:
         corpus_db_file (Union[str, Path]): Sqlite3 database file
+        table (str, optional): Sqlite table name. Defaults to "documents".
+        idcol (str, optional): Id column name. Defaults to "id".
+        textcol (str, optional): Text column name. Defaults to "text".
 
     Returns:
         List[Dict]: corpus records in form {"id": page id, "text" : page text}
@@ -35,8 +41,9 @@ def import_fever_corpus_from_sqlite(corpus_db_file: Union[str, Path]) -> List[Di
     corpus = []
     with sqlite3.connect(corpus_db_file, detect_types=sqlite3.PARSE_DECLTYPES) as connection:
         cursor = connection.cursor()
-        cursor.execute(f"SELECT id, text FROM documents")
+        cursor.execute(f"SELECT {idcol}, {textcol} FROM {table}")
         for id_, text in cursor.fetchall():
+            id_ = str(id_)
             id_ == unicodedata.normalize("NFC", id_)
             if id_ in original_ids: # this happens sometimes due to Wiki snapshot errors...
                 print(f"Original ID not unique! {id_}. Skipping...")
