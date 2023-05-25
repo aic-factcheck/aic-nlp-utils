@@ -137,6 +137,7 @@ def process_to_lines(data: Sequence,
                     for l in buf:
                         f.write(l)
                         f.write("\n")
+                    f.flush()
                     buf = []
                 pbar is None or pbar.update(1)
             pbar is None or pbar.close()
@@ -144,6 +145,7 @@ def process_to_lines(data: Sequence,
                 for l in buf:
                     f.write(l)
                     f.write("\n")
+                f.flush()
 
 def process_to_jsonl(*args, **kwargs):
     """Calls `process_to_lines` with `pfunc` transforming data to JSON formatted strings.
