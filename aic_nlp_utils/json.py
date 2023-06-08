@@ -53,19 +53,20 @@ def write_json(fname: Union[str, Path], data: Any, indent: int=3, mkdir: bool=Fa
         ujson.dump(data, json_file, ensure_ascii=False, indent=indent, default=str)
 
 
-def write_jsonl(jsonl: Union[str, Path], data: Sequence, mkdir: bool=False, show_progress: bool=False) -> None:
+def write_jsonl(jsonl: Union[str, Path], data: Sequence, mkdir: bool=False, append: bool=False, show_progress: bool=False) -> None:
     """Writes JSON file as UTF8.
 
     Args:
         jsonl (Union[str, Path]): JSONL file path
         data (Sequence): Data to write
-        mkdir (bool, optional): Create parent directory if not exists. Defaults to False. Defaults to False.
+        mkdir (bool, optional): Create parent directory if not exists. Defaults to False.
+        append (bool, optional): Append to existing file. Defaults to False.
         show_progress (bool, optional): Show progress bar. Defaults to False.
     """
     if mkdir:
         create_parent_dir(jsonl)
     # data is an iterable (list) of JSON-compatible structures (OrderedDict)
-    with open(jsonl, 'w', encoding='utf8') as json_file:
+    with open(jsonl, 'a' if append else 'w', encoding='utf8') as json_file:
         iter = tqdm(data) if show_progress else data
         for r in iter:
             ujson.dump(r, json_file, ensure_ascii=False, default=str)
