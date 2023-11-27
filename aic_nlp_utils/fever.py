@@ -3,6 +3,8 @@ import sqlite3
 from typing import Dict, List, Union
 import unicodedata
 
+from .encoding import nfc
+
 def fever_detokenize(txt: str) -> str:
     """Replaces special tokens in EnFEVER exports.
 
@@ -44,12 +46,12 @@ def import_fever_corpus_from_sqlite(corpus_db_file: Union[str, Path],
         cursor.execute(f"SELECT {idcol}, {textcol} FROM {table}")
         for id_, text in cursor.fetchall():
             id_ = str(id_)
-            id_ == unicodedata.normalize("NFC", id_)
+            id_ == nfc(id_)
             if id_ in original_ids: # this happens sometimes due to Wiki snapshot errors...
                 print(f"Original ID not unique! {id_}. Skipping...")
                 continue
             
-            text = unicodedata.normalize("NFC", fever_detokenize(text).strip())
+            text = nfc(fever_detokenize(text).strip())
             corpus.append({"id": id_, "text": text})
             original_ids.add(id_)
     return corpus
