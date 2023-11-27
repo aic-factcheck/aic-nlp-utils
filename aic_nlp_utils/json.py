@@ -5,7 +5,7 @@ import json
 import ujson
 
 from .files import create_parent_dir, count_file_lines
-
+    
 def read_json(fname: Union[str, Path]) -> Any:
     """Import JSON file.
 
@@ -51,7 +51,7 @@ def write_json(fname: Union[str, Path], data: Any, indent: int=3, mkdir: bool=Fa
     if mkdir:
         create_parent_dir(fname)
     with open(str(fname), 'w', encoding='utf8') as json_file:
-        json.dump(data, json_file, ensure_ascii=False, indent=indent, default=str)
+        ujson.dump(data, json_file, ensure_ascii=False, indent=indent, default=str)
 
 
 def write_jsonl(jsonl: Union[str, Path], data: Sequence, mkdir: bool=False, append: bool=False, show_progress: bool=False) -> None:
@@ -70,7 +70,7 @@ def write_jsonl(jsonl: Union[str, Path], data: Sequence, mkdir: bool=False, appe
     with open(jsonl, 'a' if append else 'w', encoding='utf8') as json_file:
         iter = tqdm(data) if show_progress else data
         for r in iter:
-            json.dump(r, json_file, ensure_ascii=False, default=str)
+            ujson.dump(r, json_file, ensure_ascii=False, default=str)
             json_file.write("\n")
 
 
@@ -152,5 +152,5 @@ def process_to_lines(data: Sequence,
 def process_to_jsonl(*args, **kwargs):
     """Calls `process_to_lines` with `pfunc` transforming data to JSON formatted strings.
     """    
-    kwargs["pfunc"] = lambda e: json.dumps(e, ensure_ascii=False, default=str)
+    kwargs["pfunc"] = lambda e: ujson.dumps(e, ensure_ascii=False, default=str)
     process_to_lines(*args, **kwargs)
