@@ -1,6 +1,6 @@
 from collections import defaultdict, Counter, OrderedDict
-import glob
 import html
+from pathlib import Path
 import re
 
 from lxml.html.clean import Cleaner
@@ -9,13 +9,13 @@ from tqdm import tqdm
 from .json import read_jsonl, write_jsonl
 from .encoding import nfc
 
-def _filter_and_fix_wiki_extract(root_dir, min_length, textcol="text", remove_re=None):
+def _filter_and_fix_wiki_extract(root_dir, min_length, textcol="text", remove_re=None, file_names="**"):
     # min_length - shorter pages (text) are removed
     # remove_re - matching pages (text) are removed
     records = []
-    glob_str = f"{root_dir}/**"
+    glob_str = f"**/{file_names}"
     print(glob_str)
-    source_jsonls = sorted(glob.glob(glob_str))
+    source_jsonls = sorted(Path(root_dir).glob(glob_str))
     for source_json in tqdm(source_jsonls):
         for r in read_jsonl(source_json):
             r["original_id"] = int(r["id"])
@@ -62,7 +62,7 @@ def _fix_html(records, kill_tags, remove_tags, remove_text):
     return records
 
 
-def filter_and_fix_wiki_extract_for_lang(root_dir, output_jsonl, lang, textcol="text"):
+def filter_and_fix_wiki_extract_for_lang(root_dir, output_jsonl, lang, textcol="text", file_names="**"):
     assert lang in ["cs", "en", "pl", "sk"]
     remove_text = []
     if lang == "cs":
@@ -89,7 +89,7 @@ def filter_and_fix_wiki_extract_for_lang(root_dir, output_jsonl, lang, textcol="
         remove_tags  = []
         remove_text = ['je zatiaľ „“. Pomôž Wikipédii tým, že ho [ doplníš a rozšíriš.]"']
 
-    records = _filter_and_fix_wiki_extract(root_dir, min_length, remove_re=remove_re, textcol=textcol)
+    records = _filter_and_fix_wiki_extract(root_dir, min_length, remove_re=remove_re, textcol=textcol, file_names=file_names)
     records = _fix_html(records, kill_tags, remove_tags, remove_text)
     write_jsonl(output_jsonl, records)
     return records
