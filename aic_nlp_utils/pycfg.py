@@ -5,6 +5,7 @@ import shutil
 from typing import Callable, Dict, Optional, Union
 
 from .files import create_parent_dir
+from .json import write_json
 
 
 def parse_pycfg_args():
@@ -21,10 +22,10 @@ def read_pycfg(pycfg: Union[str, Path], save_dir_fn: Optional[Callable]=None) ->
     cfg = d["config"]() # this method must be defined by the config file
     if save_dir_fn is not None:
         fdir = Path(save_dir_fn(cfg))
-        fname = Path(fdir, "config.py")
+        fname = Path(fdir, "config.json")
         create_parent_dir(fname)
-        print(f"Writing the evaluated Python config backup to: {fname}")
-        Path(fname).write_text(pformat(cfg, indent=3, sort_dicts=False))
+        print(f"Writing the evaluated Python config as JSON to: {fname}")
+        write_json(fname, cfg)
         fname_orig = Path(fdir, "config.orig.py")
         print(f"Copying the original Python config backup to: {fname_orig}")
         shutil.copy(config_py, fname_orig)
