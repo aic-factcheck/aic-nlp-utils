@@ -13,8 +13,7 @@ readme = "README.md"
 requires-python = ">=3.7"
 dependencies = [
     "tqdm>=4.0.0",
-    "ujson>=5.0.0",
-    "argparse"
+    "ujson>=5.0.0"
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
