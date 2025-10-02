@@ -361,12 +361,15 @@ def split_md(node: AbstractDocumentNode) -> InnerDocumentNode:
 
 
 
-def split_root(node: AbstractDocumentNode, maxLength: int) -> AbstractDocumentNode:
+def split_node(node: AbstractDocumentNode|str, maxLength: int) -> AbstractDocumentNode:
     # Hierarchically decompose the Markdown
     # goes by splittin sections of increasing levels -> paragraphs -> sentences -> characters
     
+    if isinstance(node, str):
+        node = LeafDocumentNode(node)
+        
     root = split_md(node)
-    assert root.text() == node.root.text()
+    assert root.text() == node.text()
     
     # Now split all leaves so none is longer than maxLen
     # Split based on paragraphs -> sentences -> characters
@@ -404,6 +407,6 @@ def split_root(node: AbstractDocumentNode, maxLength: int) -> AbstractDocumentNo
     return root
 
 
-def split_root_to_list(node: AbstractDocumentNode, maxLength: int):
-    root = split_root(node, maxLength=maxLength)
+def split_node_to_list(node: AbstractDocumentNode|str, maxLength: int):
+    root = split_node(node, maxLength=maxLength)
     return [leaf[0].text() for leaf in root.iter_leaves()]

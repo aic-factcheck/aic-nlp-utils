@@ -12,6 +12,7 @@ description = "AIC NLP Group utility package"
 readme = "README.md"
 requires-python = ">=3.7"
 dependencies = [
+    "langchain_text_splitters",
     "tqdm>=4.0.0",
     "ujson>=5.0.0"
 ]
