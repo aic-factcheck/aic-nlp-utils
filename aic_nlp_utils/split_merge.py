@@ -1,3 +1,4 @@
+import re
 from typing import List, Iterator, Tuple
 
 from langchain_text_splitters.markdown import ExperimentalMarkdownSyntaxTextSplitter
@@ -60,7 +61,6 @@ CS_ABBREVIATIONS = [
 ]
 
 ABBREVIATIONS = EN_ABBREVIATIONS + CS_ABBREVIATIONS
-
 
 
 def split_paragraphs(text: str) -> List[str]:
