@@ -1,6 +1,8 @@
 from pathlib import Path
 import re
 from typing import List, Iterator, Tuple
+import uuid
+
 
 from langchain_text_splitters.markdown import ExperimentalMarkdownSyntaxTextSplitter
 
@@ -64,10 +66,12 @@ CS_ABBREVIATIONS = [
 ABBREVIATIONS = EN_ABBREVIATIONS + CS_ABBREVIATIONS
 
 
-def split_paragraphs(text: str) -> List[str]:
+def split_paragraphs(text: str, maxLength: int) -> List[str]:
     """
     Splits text into paragraphs while preserving exact reconstruction.
     A "paragraph" is defined as a block ending with one or more newlines.
+    
+    The maxLength is ignored.
     
     Guarantee: ''.join(split_paragraphs(text)) == text
     """
@@ -95,13 +99,14 @@ def split_paragraphs(text: str) -> List[str]:
     return result
 
 
-def split_sentences(text: str) -> List[str]:
+def split_sentences(text: str, maxLength: int) -> List[str]:
     """
     Sentence splitter with:
     - abbreviation support
     - exact reconstruction (''.join(...) == text)
     - no sentence starts with whitespace except first
     - leading whitespace moved to end of previous sentence
+    - maxLength is ignored
     TODO: optimize for large number of ABBREVIATIONS!
     """
     if not text:
@@ -293,7 +298,8 @@ class InnerDocumentNode(AbstractDocumentNode):
         return LeafDocumentNode(doc=self.text())
     
     
-def split_md(node: AbstractDocumentNode) -> InnerDocumentNode:
+def split_md_old(node: AbstractDocumentNode) -> InnerDocumentNode:
+    #  this version does not work well with characters like "---" see split_md below
     splitter = ExperimentalMarkdownSyntaxTextSplitter(strip_headers=False)
     chunks = splitter.split_text(node.text())
 
@@ -362,6 +368,102 @@ def split_md(node: AbstractDocumentNode) -> InnerDocumentNode:
 
 
 
+def split_md(node: AbstractDocumentNode) -> InnerDocumentNode:
+    """
+    Use ExperimentalMarkdownSyntaxTextSplitter but protect horizontal-rule
+    lines (---, ***, ___) with placeholders so the markdown parser won't
+    consume/transform them. After splitting, restore placeholders back to
+    the exact original text (including trailing newline if present).
+    See: https://chatgpt.com/share/68dff3ca-8454-800b-84da-08992248c5b1
+    """
+    splitter = ExperimentalMarkdownSyntaxTextSplitter(strip_headers=False)
+    text = node.text()
+
+    # Protect horizontal rules: lines that consist solely of --- / *** / ___ (and optional spaces)
+    hr_pattern = re.compile(r'(?m)^(?P<hr>\s*(?:-{3,}|\*{3,}|_{3,})\s*)(\r?\n)?')
+    placeholder_map: dict[str, str] = {}
+
+    def _hr_repl(m: re.Match) -> str:
+        ph = f"<<<HR_PLACEHOLDER_{uuid.uuid4().hex}>>>"
+        # keep the entire matched text (including newline if present) so we can restore exactly
+        placeholder_map[ph] = m.group(0)
+        return ph
+
+    safe_text = hr_pattern.sub(_hr_repl, text)
+
+    # Split using the markdown splitter on the safe (placeholder) text
+    chunks = splitter.split_text(safe_text)
+
+    root = InnerDocumentNode("ROOT")
+
+    # Stack for section nesting: (level, header_name, node)
+    stack: List[tuple[int, str, InnerDocumentNode]] = [(0, "ROOT", root)]
+
+    for chunk in chunks:
+        metadata = chunk.metadata
+        content = chunk.page_content
+
+        # Restore any placeholders back to original exact text
+        if placeholder_map:
+            for ph, original in placeholder_map.items():
+                if ph in content:
+                    content = content.replace(ph, original)
+
+        # Collect headers from metadata
+        headers: dict[int, str] = {}
+        for key in ['Header 1', 'Header 2', 'Header 3', 'Header 4', 'Header 5', 'Header 6']:
+            if key in metadata:
+                level = int(key.split()[-1])
+                headers[level] = metadata[key]
+
+        if not headers:
+            # No header metadata: top-level content
+            root.add_child(LeafDocumentNode(content))
+            continue
+
+        # Find deepest header level present in this chunk
+        max_level = max(headers.keys())
+
+        # Pop stack until we're at the parent level for this chunk
+        while len(stack) > 1 and stack[-1][0] >= max_level:
+            stack.pop()
+
+        # Walk down levels to max_level, creating or reusing section nodes
+        for level in range(stack[-1][0] + 1, max_level + 1):
+            parent_level, parent_name, parent_node = stack[-1]
+
+            if level in headers:
+                header_name = headers[level]
+
+                # If last child of parent is an InnerDocumentNode with same name -> reuse it.
+                # This is safer than indexing stack by numeric level.
+                section_node: InnerDocumentNode | None = None
+                if parent_node._children:
+                    last = parent_node._children[-1]
+                    if isinstance(last, InnerDocumentNode) and last.name == header_name:
+                        section_node = last
+
+                if section_node is None:
+                    section_node = InnerDocumentNode(header_name)
+                    parent_node.add_child(section_node)
+
+                # truncate stack to the current depth and push new level
+                stack = stack[:level]
+                stack.append((level, header_name, section_node))
+            else:
+                # missing intermediate level -> insert DUMMY node so tree depth matches header levels
+                dummy = InnerDocumentNode("DUMMY")
+                parent_node.add_child(dummy)
+                stack = stack[:level]
+                stack.append((level, "DUMMY", dummy))
+
+        # Add the chunk content as a leaf into the deepest section node
+        leaf = LeafDocumentNode(content)
+        stack[-1][2].add_child(leaf)
+
+    return root
+
+
 def split_node(node: AbstractDocumentNode|str, maxLength: int) -> AbstractDocumentNode:
     # Hierarchically decompose the Markdown
     # goes by splittin sections of increasing levels -> paragraphs -> sentences -> characters
@@ -387,7 +489,7 @@ def split_node(node: AbstractDocumentNode|str, maxLength: int) -> AbstractDocume
         n_splits = 0
         for leaf, parent, cidx in root.iter_leaves():
             if leaf.len() > maxLength:
-                chunks = split_fn(leaf.text())
+                chunks = split_fn(leaf.text(), maxLength=maxLength)
                 lengths = [len(c) for c in chunks]
                 segments = merge_chunks_greedy(lengths, maxLength=maxLength)
                 merged_splits = [''.join([chunks[sidx] for sidx in seg]) for seg in segments]
