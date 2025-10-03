@@ -1,3 +1,4 @@
+from pathlib import Path
 import re
 from typing import List, Iterator, Tuple
 
@@ -369,7 +370,10 @@ def split_node(node: AbstractDocumentNode|str, maxLength: int) -> AbstractDocume
         node = LeafDocumentNode(node)
         
     root = split_md(node)
-    assert root.text() == node.text()
+    if root.text() != node.text():
+        Path("error_node.md").write_text(node.text())
+        Path("error_root.md").write_text(root.text())
+        assert False, "Not matching"
     
     # Now split all leaves so none is longer than maxLen
     # Split based on paragraphs -> sentences -> characters
